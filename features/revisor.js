@@ -5,6 +5,7 @@
 // @description  Verifica pendências de preenchimento de uma ação
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
+// @require      http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js
 // @require      core/vendor/waitForKeyElements.js
 // @require      core/xhr-interceptor.js
 // @require      core/date-utils.js
@@ -22,6 +23,12 @@
       PendenciasPanel.setData(), em vez de criar uma <ul> própria fixa no
       canto da tela. Se o painel não estiver disponível, cai no
       comportamento antigo (lista simples inserida no DOM) como fallback.
+    - Corrigido regressão desta própria refatoração: ao reescrever o
+      callback de '.modal-backdrop' eu tinha trocado (por engano)
+      element.on('click', ...) do script original por
+      element.addEventListener('click', ...), que não existe em objetos
+      jQuery (e waitForKeyElements sempre entrega jQuery, não DOM puro).
+      Revertido para .on(...).
 
   MELHORIAS PENDENTES (mantidas do original):
   - Verificar se derivações são consistentes com o local da ação
@@ -63,7 +70,10 @@
       document.body.style.overflowY = 'visible';
     }
 
-    element.addEventListener('click', () => {
+    // `element` aqui é um objeto jQuery (é isso que waitForKeyElements
+    // entrega), não um nó DOM puro — por isso usamos .on() e não
+    // addEventListener, que não existe em objetos jQuery.
+    element.on('click', () => {
       if (btnClose) btnClose.click();
     });
   });
