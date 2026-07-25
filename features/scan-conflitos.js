@@ -5,7 +5,6 @@
 // @description  Verifica conflitos de horário/local entre ações no calendário
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
-// @require      core/vendor/waitForKeyElements.js
 // @require      core/xhr-interceptor.js
 // @require      core/date-utils.js
 // ==/UserScript==
@@ -18,6 +17,10 @@
     - Usa core/date-utils.js (converterParaData) em vez de duplicar.
     - "TAB" para alternar eventos sem conflito virou atalho documentado
       (mantido idêntico ao original).
+    - Não depende mais de jQuery/waitForKeyElements: este arquivo já usava
+      apenas DOM puro (querySelectorAll, classList), então o @require de
+      waitForKeyElements.js que existia no script original era supérfluo
+      — removido.
 
   MELHORIAS PENDENTES (mantidas do original):
   - Conflitos de camarim (bloco de constantes camarins_* ainda não usado

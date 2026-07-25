@@ -74,14 +74,28 @@ siplus/
    de só aparecerem no Immediate Window (que ninguém além do
    desenvolvedor vê).
 
+## Atualização: vendorização concluída
+
+`core/vendor/waitForKeyElements.js` e `core/vendor/jquery.hotkeys.js` já
+foram criados com o conteúdo real (sem alteração de lógica). Os
+`@require` dos arquivos que dependem deles foram ajustados, e dois
+problemas foram corrigidos nessa passada:
+
+- **jQuery ausente**: `waitForKeyElements` exige jQuery carregado
+  (`$(...)`), mas alguns arquivos (`carta-proposta.js`,
+  `hover-derivacoes.js`, `revisor.js`) não tinham o `@require` do jQuery
+  no cabeçalho — adicionado.
+- **Regressão desta própria refatoração em `revisor.js`**: o callback de
+  `.modal-backdrop` recebe um objeto **jQuery** (é isso que
+  `waitForKeyElements` sempre entrega, nunca um nó DOM puro), mas eu
+  tinha reescrito `element.on('click', ...)` do original para
+  `element.addEventListener('click', ...)`, que não existe em objetos
+  jQuery. Corrigido de volta para `.on(...)`.
+- `scan-conflitos.js` não usa jQuery/`waitForKeyElements` (só DOM puro);
+  removido o `@require` supérfluo que existia no script original.
+
 ## Pendências / próximos passos (mantidas do plano original)
 
-- Vendorizar `waitForKeyElements.js` e `jquery.hotkeys.js` (hoje vêm de
-  `@require` para gist/GitHub sem versão fixada — qualquer edição no
-  arquivo remoto quebra todos os scripts sem aviso). Crie
-  `core/vendor/waitForKeyElements.js` e `core/vendor/jquery.hotkeys.js`
-  copiando o conteúdo atual, e ajuste os `@require` para apontar para
-  esses arquivos locais.
 - `carta-proposta.js`: implementar o tratamento completo de campos por
   formato (keep/remove/change: `titulo_acao`, `ecad`, `vinculo`, `sbat`,
   `drt`, `autoria_danca`, `seguro`, `art`, etc. — hoje só título,
