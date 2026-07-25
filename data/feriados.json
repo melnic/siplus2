@@ -1,0 +1,45 @@
+{
+  "_comentario": "Fonte única de feriados/eventos usada por features/feriados.js. Antes havia dois lugares com dados divergentes: um array hardcoded dentro de feriados.user.js (mais completo) e este feriados.json (subconjunto). Esta versão junta os dois, sempre em data ISO (AAAA-MM-DD).",
+  "datas": [
+    { "data": "2026-06-04", "tipo": "aberta", "descricao": "Corpus Christi" },
+
+    { "data": "2026-06-13", "tipo": "aberta", "descricao": "Jogo Brasil: 19h" },
+    { "data": "2026-06-19", "tipo": "aberta", "descricao": "Jogo Brasil: 21h30. Unidade Fecha 19h" },
+    { "data": "2026-06-24", "tipo": "aberta", "descricao": "Jogo Brasil: 19h" },
+
+    { "data": "2026-06-29", "tipo": "fechada", "descricao": "Jogo Brasil: 14h" },
+    { "data": "2026-07-05", "tipo": "aberta", "descricao": "Oitavas de Final: 17h" },
+    { "data": "2026-07-11", "tipo": "aberta", "descricao": "Quartas de Final: 18h" },
+    { "data": "2026-07-15", "tipo": "aberta", "descricao": "Semifinal: 16h" },
+    { "data": "2026-07-19", "tipo": "aberta", "descricao": "Final: 16h" },
+
+    { "data": "2026-07-09", "tipo": "aberta", "descricao": "Revolução Constitucionalista" },
+    { "data": "2026-08-15", "tipo": "aberta", "descricao": "Aniversário de Sorocaba" },
+
+    { "data": "2026-09-07", "tipo": "aberta", "descricao": "Independência do Brasil" },
+    { "data": "2026-09-08", "tipo": "fechada", "descricao": "Independência do Brasil" },
+
+    { "data": "2026-10-04", "tipo": "fechada", "descricao": "Primeiro Turno" },
+    { "data": "2026-10-25", "tipo": "fechada", "descricao": "Fecha se tiver segundo turno" },
+
+    { "data": "2026-10-12", "tipo": "aberta", "descricao": "Nossa Senhora Aparecida" },
+    { "data": "2026-10-13", "tipo": "fechada", "descricao": "Nossa Senhora Aparecida" },
+    { "data": "2026-11-02", "tipo": "aberta", "descricao": "Finados" },
+    { "data": "2026-11-03", "tipo": "fechada", "descricao": "Finados" },
+    { "data": "2026-11-15", "tipo": "aberta", "descricao": "Proclamação da República" },
+    { "data": "2026-11-20", "tipo": "aberta", "descricao": "Consciência Negra" },
+
+    { "data": "2027-02-08", "tipo": "aberta", "descricao": "Carnaval" },
+    { "data": "2027-02-09", "tipo": "aberta", "descricao": "Carnaval" },
+    { "data": "2027-02-10", "tipo": "fechada", "descricao": "Cinzas" },
+    { "data": "2027-04-21", "tipo": "aberta", "descricao": "Tiradentes" },
+    { "data": "2027-05-27", "tipo": "aberta", "descricao": "Corpus Christi" },
+    { "data": "2027-07-09", "tipo": "aberta", "descricao": "Revolução Constitucionalista" },
+    { "data": "2027-08-15", "tipo": "aberta", "descricao": "Aniversário de Sorocaba" },
+    { "data": "2027-09-07", "tipo": "aberta", "descricao": "Independência" },
+    { "data": "2027-10-12", "tipo": "aberta", "descricao": "Nossa Senhora" },
+    { "data": "2027-11-02", "tipo": "aberta", "descricao": "Finados" },
+    { "data": "2027-11-15", "tipo": "aberta", "descricao": "República" },
+    { "data": "2027-11-16", "tipo": "fechada", "descricao": "República" }
+  ]
+}
