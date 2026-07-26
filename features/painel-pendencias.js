@@ -7,6 +7,8 @@
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
 // @run-at       document-idle
+// @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/painel-pendencias.js
+// @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/painel-pendencias.js
 // ==/UserScript==
 
 /*

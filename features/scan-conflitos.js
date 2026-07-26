@@ -5,8 +5,10 @@
 // @description  Verifica conflitos de horário/local entre ações no calendário
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
-// @require      core/xhr-interceptor.js
-// @require      core/date-utils.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/xhr-interceptor.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/date-utils.js
+// @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/scan-conflitos.js
+// @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/scan-conflitos.js
 // ==/UserScript==
 
 /*

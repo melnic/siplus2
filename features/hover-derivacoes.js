@@ -6,10 +6,12 @@
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
 // @require      http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js
-// @require      core/vendor/waitForKeyElements.js
-// @require      core/vendor/jquery.hotkeys.js
-// @require      core/xhr-interceptor.js
-// @require      core/dom-utils.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/vendor/waitForKeyElements.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/vendor/jquery.hotkeys.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/xhr-interceptor.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/dom-utils.js
+// @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/hover-derivacoes.js
+// @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/hover-derivacoes.js
 // ==/UserScript==
 
 /*

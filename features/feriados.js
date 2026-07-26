@@ -6,6 +6,8 @@
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @match        https://webapps.sorocaba.sescsp.org.br/siplan/*
 // @run-at       document-end
+// @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/feriados.js
+// @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/feriados.js
 // ==/UserScript==
 
 /*
@@ -57,7 +59,7 @@
 
   async function carregarFeriados() {
     try {
-      const resp = await fetch('data/feriados.json');
+      const resp = await fetch('https://raw.githubusercontent.com/melnic/siplus2/main/data/feriados.json');
       const json = await resp.json();
       feriadosPorData = {};
       (json.datas || []).forEach((f) => {
