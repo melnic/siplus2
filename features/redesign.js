@@ -6,7 +6,9 @@
 // @match        http://webapps.sorocaba.sescsp.org.br/*
 // @grant        none
 // @require      http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js
-// @require      core/vendor/waitForKeyElements.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/vendor/waitForKeyElements.js
+// @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/redesign.js
+// @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/redesign.js
 // ==/UserScript==
 
 /*

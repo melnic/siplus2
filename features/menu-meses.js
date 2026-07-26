@@ -5,6 +5,8 @@
 // @description  Adiciona botões para o mês atual e próximos 4 meses no calendário
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
+// @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/menu-meses.js
+// @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/menu-meses.js
 // ==/UserScript==
 
 /*
