@@ -3,22 +3,14 @@
   ============================================================================
   Pequenos utilitários de DOM reutilizados pelas features.
 
-  NOTA IMPORTANTE sobre @require externos:
-  Os scripts originais usavam:
-    @require https://gist.github.com/raw/2625891/waitForKeyElements.js
-    @require https://raw.githubusercontent.com/jeresig/jquery.hotkeys/master/jquery.hotkeys.js
-
-  Essas URLs não são "pinadas" em uma versão/commit específico. Se o autor
-  do gist/repo alterar o conteúdo, TODOS os scripts que dependem dele mudam
-  de comportamento sem aviso, e isso também não funciona no modelo de
-  extensão de navegador (Manifest V3 não permite carregar código remoto).
-
-  Recomendação: baixar o conteúdo atual de waitForKeyElements.js e do
-  jquery.hotkeys.js UMA VEZ e vendorizá-los como arquivos locais
-  (core/vendor/waitForKeyElements.js, core/vendor/jquery.hotkeys.js),
-  referenciados via @require file:// (Tampermonkey) ou bundle (extensão).
-  Este projeto assume que isso já foi feito e que os arquivos vendorizados
-  são carregados antes deste.
+  CHANGELOG
+  - v2.0.0: waitForElement reescrito para casar com o que passou a ser
+    usado em produção: observa continuamente (não para após o primeiro
+    achado) e cobre MÚLTIPLOS elementos (querySelectorAll + WeakSet),
+    chamando o callback uma vez para cada elemento NOVO que aparecer.
+    Substituiu de vez o antigo waitForKeyElements (baseado em jQuery),
+    removido por ter causado conflito com o jQuery da própria página do
+    SIPLAN (ver histórico da revisão de redesign.js).
   ============================================================================
 */
 
@@ -32,29 +24,27 @@
   }
 
   /**
-   * Espera um elemento aparecer no DOM (fallback simples caso o
-   * waitForKeyElements vendorizado não esteja disponível). Usa
-   * MutationObserver em vez de polling.
+   * Observa o DOM com MutationObserver e chama o callback uma vez para
+   * cada elemento NOVO que casar com o seletor (nunca para de observar).
+   * Sem jQuery, sem dependência externa.
    *
    * @param {string} selector
    * @param {(el: Element) => void} callback
-   * @param {boolean} once  se true, para de observar após o primeiro match
    */
-  function waitForElement(selector, callback, once = true) {
-    const existing = document.querySelector(selector);
-    if (existing) {
-      callback(existing);
-      if (once) return;
+  function waitForElement(selector, callback) {
+    const handled = new WeakSet();
+
+    function scan() {
+      document.querySelectorAll(selector).forEach((el) => {
+        if (handled.has(el)) return;
+        handled.add(el);
+        callback(el);
+      });
     }
 
-    const observer = new MutationObserver(() => {
-      const el = document.querySelector(selector);
-      if (el) {
-        callback(el);
-        if (once) observer.disconnect();
-      }
-    });
+    scan();
 
+    const observer = new MutationObserver(scan);
     observer.observe(document.body, { childList: true, subtree: true });
     return observer;
   }
