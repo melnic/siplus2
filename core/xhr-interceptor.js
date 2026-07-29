@@ -48,8 +48,8 @@
   }
   window.__siplusXhrPatched = true;
 
-  const RE_ATIVIDADE = /api\/atividade\/96/;
-  const RE_LISTA = /api\/atividade\?start=/;
+  const RE_ATIVIDADE = /api\/atividade\/96\d*(\?|$)/;
+  const RE_LISTA = /api\/atividade\?(start=|.*&start=)/;
 
   const originalOpen = XMLHttpRequest.prototype.open;
 
