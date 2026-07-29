@@ -1,30 +1,38 @@
 // ==UserScript==
 // @name         SIPLUS - Gerador de Carta Proposta
 // @namespace    http://tampermonkey.net/
-// @version      26.01.01
+// @version      26.01.02
 // @description  Obtém dados para carta proposta e lança no clipboard
 // @author       You
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
-// @require      http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/vendor/waitForKeyElements.js
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/vendor/jquery.hotkeys.js
+// @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/carta-proposta.js
+// @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/carta-proposta.js
 // @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/xhr-interceptor.js
 // @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/date-utils.js
 // @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/dom-utils.js
-// @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/carta-proposta.js
-// @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/carta-proposta.js
 // ==/UserScript==
 
 /*
   CHANGELOG
+  - 26.01.02: Removida toda dependência de jQuery (waitForKeyElements e
+    jquery.hotkeys vendorizados) e de qualquer @require de jQuery externo.
+    Trocado por waitForElement() (MutationObserver puro) e por listeners
+    de teclado (keydown) vanilla. Também RESTAURADOS os 3 atalhos de
+    teclado do script .user.js original (Ctrl+Q, Ctrl+., Ctrl+/), que
+    tinham ficado de fora sem querer numa refatoração anterior — o motivo
+    de terem sumido foi eu ter movido a lógica de hover de derivações para
+    features/hover-derivacoes.js e não ter reatribuído os 2 primeiros
+    atalhos (que não são de hover) a lugar nenhum. Ctrl+Q abre o
+    quadro-resumo; Ctrl+. avança para a próxima data no calendário;
+    Ctrl+/ está em features/hover-derivacoes.js (aciona o refresh do
+    hover ali, que é o que ele fazia originalmente).
   - 26.01.01: Refatorado para usar core/xhr-interceptor.js (elimina patch
-    duplicado de XMLHttpRequest) e core/date-utils.js (elimina duplicação de
-    toReais/converterParaData). Corrigido bug em que o branch "1 contrato"
-    referenciava a variável inexistente `carta1` em vez da string 'carta1'
-    (esse branch era código morto porque a condição anterior sempre o
-    tornava inalcançável; ver nota no código).
-  - Anteriores: ver histórico do repositório.
+    duplicado de XMLHttpRequest) e core/date-utils.js (elimina duplicação
+    de toReais/converterParaData). Corrigido bug em que o branch "1
+    contrato" referenciava a variável inexistente `carta1` em vez da
+    string 'carta1' (esse branch era código morto porque a condição
+    anterior sempre o tornava inalcançável).
 
   MELHORIAS PENDENTES (mantidas do original):
   - Tratamento de Carta Proposta por tipo (keep/remove/change de campos)
@@ -36,7 +44,7 @@
   'use strict';
 
   const { toReais } = window.SiplusDateUtils;
-  const waitForKeyElements = window.waitForKeyElements; // vendorizado
+  const { waitForElement } = window.SiplusDomUtils;
 
   const TEMPLATE_LINK =
     'ms-word:nft|u|https://sescsp.sharepoint.com/sites/NcleoArtstico-SescSorocaba/Shared%20Documents/Adm%20Programa%C3%A7%C3%A3o/Cartas%20Proposta/CP%20-%20Universal.dotm';
@@ -57,10 +65,34 @@
   let acaoAtual = null;
 
   document.addEventListener('siplus:atividade-loaded', (evento) => {
-    acaoAtual = evento.detail.data;
+    const dados = evento.detail.data;
+    // Blindagem: só aceita a resposta se tiver o formato esperado (com a
+    // lista de datas) — evita que uma resposta de sub-endpoint parecido
+    // (ex: .../sessoes) sobrescreva acaoAtual com dados incompletos.
+    if (dados && Array.isArray(dados.datas)) {
+      acaoAtual = dados;
+    }
   });
 
-  waitForKeyElements('#btn-export', inserirBotao);
+
+  // --------------------------------------------------------------------
+  // Atalhos de teclado (restaurados do script .user.js original)
+  // --------------------------------------------------------------------
+  document.addEventListener('keydown', (e) => {
+    // Ctrl+Q: abre o quadro-resumo
+    if (e.ctrlKey && e.key.toLowerCase() === 'q') {
+      const btn = document.querySelector('#btn-quadro-resumo');
+      if (btn) btn.click();
+    }
+
+    // Ctrl+.: avança para a próxima data no calendário
+    if (e.ctrlKey && e.key === '.') {
+      const btn = document.querySelector('.container-date-next');
+      if (btn) btn.click();
+    }
+  });
+
+  waitForElement('#btn-export', inserirBotao);
 
   // --------------------------------------------------------------------
   // Botão / menu de Cartas Proposta

@@ -1,85 +1,96 @@
 // ==UserScript==
 // @name         SIPLUS - Redesign Sistemas Sesc
 // @namespace    http://tampermonkey.net/
-// @version      26.01.01
+// @version      26.01.03
 // @description  Ajustes visuais gerais da interface SIPLAN
 // @match        http://webapps.sorocaba.sescsp.org.br/*
 // @grant        none
-// @require      http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/vendor/waitForKeyElements.js
 // @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/redesign.js
 // @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/redesign.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/dom-utils.js
 // ==/UserScript==
 
 /*
   CHANGELOG
-  - 26.01.01: sem mudanças de comportamento; apenas nomes de função mais
-    descritivos (jaFechouQuadroResumo em vez de flag solta `fechado`) e
-    comentários. Mantido o @require do jQuery 1.7.2, pois waitForKeyElements
-    entrega os nós como objetos jQuery (jNode.css(...), não jNode.style).
-    O @require de jquery.hotkeys e do JotForm.js foi removido deste arquivo
-    por não serem usados aqui (nenhum atalho de teclado nem formulário
-    JotForm aparece neste script) — se alguma outra feature específica
-    precisar deles, deve declará-los no seu próprio cabeçalho.
+  - 26.01.03: Removida a dependência de jQuery por completo (e o
+    waitForKeyElements vendorizado, que dependia dele). Motivo: mesmo sem
+    trazer nossa própria cópia de jQuery via @require (correção da versão
+    anterior), ainda dependíamos do jQuery que a PRÓPRIA página do SIPLAN
+    carrega — o que é frágil (se a ordem de carregamento mudar, ou se
+    rodarmos numa página sem jQuery, quebra). Trocado por waitForElement(),
+    uma função própria baseada em MutationObserver, sem nenhuma dependência
+    externa. Todo o código que usava métodos jQuery (jNode.css(),
+    jNode.hide(), jNode.on(), $(...)) foi reescrito para DOM puro
+    (element.style, element.style.display, element.addEventListener,
+    document.querySelector[All]).
+  - 26.01.02: corrigido conflito de jQuery duplicado (ver git log).
+  - 26.01.01: nomes de função mais descritivos, comentários.
 */
 
 (function () {
   'use strict';
 
+  const { waitForElement } = window.SiplusDomUtils;
+
   let jaFechouQuadroResumo = false;
 
-  waitForKeyElements('.textododca', ajustarCaixaTexto);
-  waitForKeyElements('.intrasesc-nav', ocultar);
-  waitForKeyElements('.page-header', ocultar);
-  waitForKeyElements(
+  waitForElement('.textododca', ajustarCaixaTexto);
+  waitForElement('.intrasesc-nav', ocultar);
+  waitForElement('.page-header', ocultar);
+  waitForElement(
     '#module-container > div > div > div.span10 > div:nth-child(2) > a',
     ajustarCalendario
   );
 
-  waitForKeyElements('#container-btn-filtros', ocultar);
-  waitForKeyElements('#agenda-box-informacoes', ocultar);
-  waitForKeyElements(
+  waitForElement('#container-btn-filtros', ocultar);
+  waitForElement('#agenda-box-informacoes', ocultar);
+  waitForElement(
     '#module-container > div > div.row-fluid > div.span10 > div:nth-child(1)',
     ocultar
   );
 
-  waitForKeyElements('.navbar-inner', () => {
+  waitForElement('.navbar-inner', () => {
     // Ajusta estilo das divs de ação no calendário
-    const divs = $('.fc-event');
-    divs.css('border-radius', '5px');
-    divs.css('color', 'rgba(0, 0, 0, 0.75)');
+    document.querySelectorAll('.fc-event').forEach((el) => {
+      el.style.borderRadius = '5px';
+      el.style.color = 'rgba(0, 0, 0, 0.75)';
+    });
     document.body.style.background = '#f3f3f3';
   });
 
   // Oculta/mostra o filtro da agenda ao clicar no título
-  waitForKeyElements('#container-filters-summary > div > div.box-title', toggleFilter);
+  waitForElement('#container-filters-summary > div > div.box-title', toggleFilter);
 
-  function toggleFilter(jNode) {
-    const d = $('#container-filters-summary > div > div.well.no-radius');
-    d.toggle();
-    jNode.on('click', function () {
-      d.toggle();
-    });
+  function toggleFilter(node) {
+    const painel = document.querySelector('#container-filters-summary > div > div.well.no-radius');
+    if (!painel) return;
+
+    const toggle = () => {
+      painel.style.display = painel.style.display === 'none' ? '' : 'none';
+    };
+    toggle();
+    node.addEventListener('click', toggle);
   }
 
-  function ajustarCaixaTexto(jNode) {
-    jNode.css('width', '300pt');
-    jNode.css('font-size', '12pt');
+  function ajustarCaixaTexto(node) {
+    node.style.width = '300pt';
+    node.style.fontSize = '12pt';
   }
 
   function ajustarCalendario() {
-    $('#module-container > div > div > div.span10').css('margin-top', '5em');
+    const el = document.querySelector('#module-container > div > div > div.span10');
+    if (el) el.style.marginTop = '5em';
   }
 
-  function ocultar(jNode) {
-    jNode.hide();
+  function ocultar(node) {
+    node.style.display = 'none';
   }
 
   // Mantido do original para uso futuro (ex: fechar automaticamente o
   // quadro-resumo na primeira abertura), atualmente sem chamador ativo.
-  function fecharUmaVez(jNode) {
+  function fecharUmaVez(node) {
     if (!jaFechouQuadroResumo) {
-      jNode.click();
+      node.click();
       jaFechouQuadroResumo = true;
     }
   }

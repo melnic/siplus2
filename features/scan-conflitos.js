@@ -5,11 +5,24 @@
 // @description  Verifica conflitos de horário/local entre ações no calendário
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/xhr-interceptor.js
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/date-utils.js
 // @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/scan-conflitos.js
 // @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/scan-conflitos.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/xhr-interceptor.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/date-utils.js
 // ==/UserScript==
+
+/*
+  NOTA DESTA VERSÃO (standalone):
+  Para eliminar qualquer dependência de rede durante o carregamento da
+  página (uma delas pode ter causado a página travar em branco), o código
+  das seguintes dependências foi embutido diretamente neste arquivo, em
+  vez de vir via @require de GitHub:
+ *   - xhr
+ *   - date
+  
+  O único recurso externo que continua vindo de fora é o jQuery via CDN do
+  Google (ajax.googleapis.com), igual ao script original.
+*/
 
 /*
   CHANGELOG

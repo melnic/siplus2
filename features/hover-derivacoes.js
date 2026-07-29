@@ -1,18 +1,56 @@
 // ==UserScript==
 // @name         SIPLUS - Hover de Derivações
 // @namespace    http://tampermonkey.net/
-// @version      26.01.01
+// @version      26.01.05
 // @description  Mostra tabela de serviços/derivações ao passar o mouse sobre uma data
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @grant        none
-// @require      http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/vendor/waitForKeyElements.js
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/vendor/jquery.hotkeys.js
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/xhr-interceptor.js
-// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/dom-utils.js
 // @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/hover-derivacoes.js
 // @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/hover-derivacoes.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/xhr-interceptor.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/dom-utils.js
 // ==/UserScript==
+
+/*
+  CHANGELOG
+  - 26.01.05: Corrigido o bug real por trás de "não funciona depois de
+    salvar": ao salvar, o SIPLAN dispara uma segunda requisição para
+    .../atividade/<id>/sessoes, que também batia com o regex antigo do
+    interceptor (api/atividade/96...) mas devolve um JSON SEM o campo
+    `datas` — isso sobrescrevia acaoAtual com dados incompletos e o hover
+    quebrava com "Cannot read properties of undefined (reading 'find')".
+    Duas correções: (1) o regex do interceptor agora exige que o ID da
+    atividade seja seguido de "?" ou fim da string, excluindo sub-rotas
+    como /sessoes; (2) blindagem extra no listener de
+    'siplus:atividade-loaded', que só aceita a resposta se ela realmente
+    tiver `datas` como array — assim, mesmo que apareça outro sub-endpoint
+    parecido no futuro, não quebra mais.
+  - 26.01.04-debug (removida): versão com console.log temporários usados
+    para diagnosticar o problema acima.
+  - 26.01.03: Corrigido: o hover só era religado nos elementos '.data-text'
+    que existiam no exato momento em que '#datas-list-container' aparecia
+    pela primeira vez (um "retrato" único via querySelectorAll). Quando a
+    lista de datas era re-renderizada — por exemplo ao abrir a ação de
+    novo ou depois de salvar — os elementos antigos eram substituídos por
+    elementos NOVOS sem listener nenhum, e o hover parava de funcionar
+    silenciosamente (sem erro no console). Agora observamos '.data-text'
+    diretamente com waitForElement(), que chama attachHover() para CADA
+    elemento novo que aparecer, então o hover se religa sozinho sempre que
+    a página troca esses elementos. Ctrl+/ continua disponível como reforço
+    manual, mas não deveria mais ser necessário no dia a dia.
+  - 26.01.02: Removida a dependência de jQuery (waitForKeyElements e
+    jquery.hotkeys vendorizados, e o @require de jQuery externo). Trocado
+    por waitForElement() (MutationObserver puro) e o atalho Ctrl+/ agora é
+    um listener de 'keydown' vanilla, sem depender do plugin jQuery Hotkeys.
+
+  Esta funcionalidade estava misturada dentro de carta_proposta.user.js
+  (createHover, createTable, extractDateTime, applyStyles). Foi extraída
+  para seu próprio módulo porque não tem relação direta com a geração da
+  carta proposta — facilita revisão e permite ligar/desligar cada feature
+  de forma independente.
+*/
+
+
 
 /*
   Esta funcionalidade estava misturada dentro de carta_proposta.user.js
@@ -25,16 +63,35 @@
 (function () {
   'use strict';
 
-  const { escapeHtml } = window.SiplusDomUtils;
-  const waitForKeyElements = window.waitForKeyElements;
+  const { escapeHtml, waitForElement } = window.SiplusDomUtils;
 
   let acaoAtual = null;
+  let floatingDivEl = null;
 
   document.addEventListener('siplus:atividade-loaded', (evento) => {
-    acaoAtual = evento.detail.data;
+    const dados = evento.detail.data;
+    // Blindagem: o regex do interceptor já foi apertado para não pegar
+    // sub-endpoints como .../sessoes, mas mantemos esta checagem como
+    // segunda camada de defesa — só aceitamos a resposta se ela realmente
+    // tiver o formato esperado (com a lista de datas).
+    if (dados && Array.isArray(dados.datas)) {
+      acaoAtual = dados;
+    }
   });
 
-  waitForKeyElements('#datas-list-container', iniciar);
+  // Configura o div flutuante uma única vez.
+  createHoverDiv();
+  applyStyles();
+  floatingDivEl = document.getElementById('floatingDivDerivacoes');
+
+  // Em vez de esperar o container aparecer UMA VEZ e pegar um "retrato"
+  // dos .data-text existentes naquele instante (o que fazia o hover parar
+  // de funcionar depois de abrir/salvar a ação, quando a lista de datas é
+  // re-renderizada com elementos NOVOS), observamos '.data-text'
+  // diretamente. waitForElement chama o callback para CADA elemento novo
+  // que aparecer, então o hover é religado automaticamente sempre que a
+  // página troca esses elementos — sem precisar de Ctrl+/ manual.
+  waitForElement('.data-text', attachHover);
 
   function extractDateTime(text) {
     const match = text.match(/(\d{2}\/\d{2}\/\d{4}), (\d{1,2}h\d{0,2})/);
@@ -125,46 +182,40 @@
     }
   }
 
-  function iniciar() {
-    createHoverDiv();
-    applyStyles();
+  function attachHover(element) {
+    element.addEventListener('mouseenter', () => {
+      if (!acaoAtual) return;
 
-    const floatingDiv = document.getElementById('floatingDivDerivacoes');
-    const hoverElements = document.querySelectorAll('.data-text');
+      const dateTime = extractDateTime(element.textContent);
+      if (!dateTime) return;
 
-    hoverElements.forEach((element) => {
-      element.addEventListener('mouseenter', () => {
-        if (!acaoAtual) return;
+      const matchingData = acaoAtual.datas.find(
+        (item) => item.dataAgenda.dataInicio === dateTime
+      );
 
-        const dateTime = extractDateTime(element.textContent);
-        if (!dateTime) return;
+      floatingDivEl.style.display = 'block';
+      floatingDivEl.innerHTML = matchingData
+        ? createTable(matchingData.servicos)
+        : '<p>No matching data found.</p>';
 
-        const matchingData = acaoAtual.datas.find(
-          (item) => item.dataAgenda.dataInicio === dateTime
-        );
+      const rect = element.getBoundingClientRect();
+      floatingDivEl.style.top = `${rect.bottom + window.scrollY}px`;
+      floatingDivEl.style.left = `${rect.left + window.scrollX - 100}px`;
+    });
 
-        floatingDiv.style.display = 'block';
-        floatingDiv.innerHTML = matchingData
-          ? createTable(matchingData.servicos)
-          : '<p>No matching data found.</p>';
-
-        const rect = element.getBoundingClientRect();
-        floatingDiv.style.top = `${rect.bottom + window.scrollY}px`;
-        floatingDiv.style.left = `${rect.left + window.scrollX - 100}px`;
-      });
-
-      element.addEventListener('mouseleave', () => {
-        floatingDiv.style.display = 'none';
-      });
+    element.addEventListener('mouseleave', () => {
+      floatingDivEl.style.display = 'none';
     });
   }
 
-  // Atalho para reprocessar hover manualmente (Ctrl+/), útil se a lista
-  // de datas for recarregada dinamicamente e os listeners precisarem ser
-  // reanexados.
-  if (window.jQuery) {
-    jQuery(document).bind('keydown', 'ctrl+/', iniciar);
-  }
+  // Mantido como fallback manual (Ctrl+/): força um novo scan imediato de
+  // '.data-text', útil caso algum elemento tenha escapado da observação
+  // automática por algum motivo.
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === '/') {
+      document.querySelectorAll('.data-text').forEach(attachHover);
+    }
+  });
 
   console.log('[SIPLUS] features/hover-derivacoes.js carregado.');
 })();

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SIPLUS - Painel de Pendências
 // @namespace    https://sesc.local/pendencias-panel
-// @version      3.1.0
+// @version      3.4.0
 // @description  Caixa flutuante e arrastável que lista pendências (corrigir / validar / sugestão), agrupadas, com botão de correção automática quando disponível. Visual Bootstrap 5, isolado via Shadow DOM.
 // @author       Bruno
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
@@ -9,6 +9,7 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/melnic/siplus2/main/features/painel-pendencias.js
 // @updateURL    https://raw.githubusercontent.com/melnic/siplus2/main/features/painel-pendencias.js
+// @require      https://raw.githubusercontent.com/melnic/siplus2/main/core/dom-utils.js
 // ==/UserScript==
 
 /*
@@ -17,13 +18,36 @@
   isolar CSS, API pública clara setData/addItem/clear/destroy). Mudanças
   nesta revisão:
 
+  - v3.4.0: Renomeado o grupo verde de "Sugestão" para "Confirmado".
+    Adicionado checkbox em cada item para marcá-lo como resolvido/dispensar
+    (some da lista). O estado fica salvo no localStorage do navegador,
+    separado por ação (usa o ID de 14 dígitos da URL como chave), e é
+    recarregado automaticamente sempre que setData() é chamado — incluindo
+    ao trocar de ação dentro do SPA sem recarregar a página. Botão novo no
+    cabeçalho (👁️) reexibe todos os itens dispensados da ação atual, caso
+    algo tenha sido marcado por engano. Quando migrar para um backend
+    externo (Supabase, por exemplo), só carregarDispensados/
+    salvarDispensados precisam mudar — o resto do código já está isolado
+    dessa decisão.
+  - v3.3.0: O tooltip de `explicacao` agora também aparece ao passar o
+    mouse sobre o TEXTO do item (não só sobre o botão 🔧 Corrigir).
+    Necessário para os itens de confirmação "sugestão" (ex: "PCAP:
+    nome_truncado…") que não têm botão de correção, mas precisam mostrar
+    o nome completo do arquivo no hover.
+  - v3.2.0: Adicionado suporte a `localizar` — uma função opcional que
+    retorna o elemento DOM (na PÁGINA, não no painel) relacionado à
+    pendência. Quando presente, um botão 📍 aparece ao lado do item; ao
+    clicar, a página rola suavemente até o elemento (scrollIntoView) e ele
+    recebe um destaque visual temporário (borda amarela piscando ~2s).
+    Objetivo: permitir ao usuário ir direto ao campo/seção com problema em
+    vez de precisar procurar manualmente.
   - v3.1.0: usa window.SiplusDomUtils.escapeHtml (core/dom-utils.js) em vez
     de reimplementar a mesma função; nenhuma mudança de comportamento.
     Passa a ser alimentado, opcionalmente, pelos eventos do
     core/xhr-interceptor.js e da feature revisor.js, ao invés de exigir que
     quem o usa chame PendenciasPanel.setData diretamente (ver seção 10).
 
-  COMO USAR (inalterado)
+  COMO USAR
   ============================================================================
 
   PendenciasPanel.setData(itens)
@@ -32,8 +56,15 @@
         gravidade: "corrigir" | "validar" | "sugestao",
         texto: "Texto breve do erro/observação",
         explicacao: "Texto explicativo do que a função de correção fará",
+        localizar: function () { return document.querySelector('#algum-id'); }  // opcional
         funcao: function () { ... }   // opcional
       }
+
+  `localizar` deve retornar um elemento DOM (ou null/undefined se não
+  encontrar nada — nesse caso o botão 📍 simplesmente não faz nada e um
+  aviso é logado no console). Pode ser um seletor fixo simples, ou uma
+  busca mais elaborada (ex: encontrar o elemento de uma data específica
+  numa lista, comparando texto).
 
   PendenciasPanel.addItem(item)
   PendenciasPanel.clear()
@@ -54,7 +85,7 @@
   const GRUPOS = [
     { chave: 'corrigir', label: 'Corrigir', cor: 'danger' },
     { chave: 'validar', label: 'Validar', cor: 'warning' },
-    { chave: 'sugestao', label: 'Sugestão', cor: 'success' }
+    { chave: 'sugestao', label: 'Confirmado', cor: 'success' }
   ];
 
   const HOST_ID = 'pendencias-panel-host';
@@ -76,6 +107,63 @@
   let nextId = 1;
   let expandedAll = false;
   const expandedGroups = { corrigir: false, validar: false, sugestao: false };
+
+  // --------------------------------------------------------------------
+  // 1.1 Itens "dispensados" (checkbox marcado pelo usuário) — persistidos
+  // no localStorage, escopados por ação (cada ação tem seu próprio
+  // conjunto, identificado pelo ID de 14 dígitos que aparece na URL).
+  //
+  // NOTA para o futuro: se/quando migrar para um backend externo (ex:
+  // Supabase, como discutido), trocar carregarDispensados/salvarDispensados
+  // por chamadas de API equivalentes — o resto do código (estaDispensado,
+  // dispensarItem, itensPorGrupo) não precisa mudar.
+  // --------------------------------------------------------------------
+
+  let dispensados = new Set();
+
+  function acaoIdAtual() {
+    const m = window.location.href.match(/96\d{12}/);
+    return m ? m[0] : 'geral';
+  }
+
+  function storageKeyDispensados() {
+    return `siplus-pendencias-dispensados-${acaoIdAtual()}`;
+  }
+
+  function carregarDispensados() {
+    try {
+      const raw = localStorage.getItem(storageKeyDispensados());
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch (e) {
+      return new Set();
+    }
+  }
+
+  function salvarDispensados() {
+    try {
+      localStorage.setItem(storageKeyDispensados(), JSON.stringify([...dispensados]));
+    } catch (e) {
+      /* ignora */
+    }
+  }
+
+  // Identidade do item é o próprio texto (simplificação: dois itens com
+  // texto idêntico na mesma ação são tratados como "o mesmo" item).
+  function estaDispensado(texto) {
+    return dispensados.has(texto);
+  }
+
+  function dispensarItem(texto) {
+    dispensados.add(texto);
+    salvarDispensados();
+    render();
+  }
+
+  function reativarItem(texto) {
+    dispensados.delete(texto);
+    salvarDispensados();
+    render();
+  }
 
   // --------------------------------------------------------------------
   // 2. CSS de fallback + estrutural (dentro da shadow root)
@@ -147,6 +235,21 @@
       }
       .pp-item-text { flex: 1; line-height: 1.3; word-break: break-word; }
 
+      .pp-dismiss-checkbox {
+        flex-shrink: 0; margin: 0; cursor: pointer;
+      }
+
+      .pp-item-actions {
+        display: flex; align-items: center; gap: .3rem; flex-shrink: 0;
+      }
+
+      .pp-locate-btn {
+        flex-shrink: 0; font-size: .85rem; line-height: 1; padding: .15rem .35rem;
+        border-radius: .35rem; cursor: pointer; background: transparent;
+        border: 1px solid rgba(0,0,0,.15);
+      }
+      .pp-locate-btn:hover { background: rgba(0,0,0,.06); }
+
       .pp-fix-btn {
         flex-shrink: 0; font-size: .76rem; font-weight: 600; padding: .2rem .55rem;
         border-radius: .35rem; cursor: pointer; background: transparent; white-space: nowrap;
@@ -211,11 +314,11 @@
   }
 
   function itensPorGrupo(chave) {
-    return itens.filter((it) => it.gravidade === chave);
+    return itens.filter((it) => it.gravidade === chave && !estaDispensado(it.texto));
   }
 
   function totalItens() {
-    return itens.length;
+    return itens.filter((it) => !estaDispensado(it.texto)).length;
   }
 
   // --------------------------------------------------------------------
@@ -273,6 +376,7 @@
           </span>
         </div>
         <div class="pp-actions">
+          <button type="button" class="pp-show-dismissed" title="Reexibir itens marcados como resolvidos nesta ação">👁️</button>
           <button type="button" class="pp-expand-all" title="Expandir/recolher todos os grupos">⇕</button>
           <button type="button" class="pp-minimize" title="Minimizar">—</button>
         </div>
@@ -303,6 +407,13 @@
 
     panelEl.querySelector('.pp-minimize').addEventListener('click', () => {
       panelEl.classList.toggle('pp-minimized');
+    });
+
+    panelEl.querySelector('.pp-show-dismissed').addEventListener('click', () => {
+      if (dispensados.size === 0) return;
+      dispensados = new Set();
+      salvarDispensados();
+      render();
     });
   }
 
@@ -438,11 +549,35 @@
           itemEl.className = 'pp-item';
 
           const temFuncao = typeof item.funcao === 'function';
+          const temLocalizar = typeof item.localizar === 'function';
 
           itemEl.innerHTML = `
+            <input type="checkbox" class="pp-dismiss-checkbox" title="Marcar como resolvido (oculta este item)">
             <span class="pp-item-text">${escapeHtml(item.texto || '')}</span>
-            ${temFuncao ? `<button type="button" class="pp-fix-btn pp-text-${grupo.cor}">🔧 Corrigir</button>` : ''}
+            <span class="pp-item-actions">
+              ${temLocalizar ? `<button type="button" class="pp-locate-btn" title="Ir até o item na tela">📍</button>` : ''}
+              ${temFuncao ? `<button type="button" class="pp-fix-btn pp-text-${grupo.cor}">🔧 Corrigir</button>` : ''}
+            </span>
           `;
+
+          const chkDispensar = itemEl.querySelector('.pp-dismiss-checkbox');
+          chkDispensar.addEventListener('change', () => {
+            if (chkDispensar.checked) dispensarItem(item.texto);
+          });
+
+          if (temLocalizar) {
+            const btnLocate = itemEl.querySelector('.pp-locate-btn');
+            btnLocate.addEventListener('click', () => irParaItem(item));
+          }
+
+          // Tooltip no próprio texto do item quando houver `explicacao`
+          // (ex: nome completo de um arquivo, quando o texto exibido está
+          // truncado). Independente de ter botão de corrigir ou não.
+          if (item.explicacao) {
+            const textoEl = itemEl.querySelector('.pp-item-text');
+            textoEl.addEventListener('mouseenter', () => showTooltip(textoEl, item.explicacao));
+            textoEl.addEventListener('mouseleave', hideTooltip);
+          }
 
           if (temFuncao) {
             const btn = itemEl.querySelector('.pp-fix-btn');
@@ -516,6 +651,62 @@
   }
 
   // --------------------------------------------------------------------
+  // 7.1 Localização/destaque de item na página (fora do painel)
+  // --------------------------------------------------------------------
+
+  const HIGHLIGHT_CLASS = 'siplus-pendencia-destaque';
+  let highlightStyleInjetado = false;
+
+  function garantirEstiloDestaque() {
+    if (highlightStyleInjetado) return;
+    highlightStyleInjetado = true;
+
+    // Este CSS vai no <head> da PÁGINA (não na shadow root do painel),
+    // porque o elemento destacado pertence à página, não ao painel.
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes ${HIGHLIGHT_CLASS}-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        50% { box-shadow: 0 0 0 6px rgba(255, 193, 7, 0.55); }
+      }
+      .${HIGHLIGHT_CLASS} {
+        outline: 3px solid #ffc107 !important;
+        outline-offset: 2px;
+        border-radius: 4px;
+        animation: ${HIGHLIGHT_CLASS}-pulse 0.8s ease-in-out 3;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function irParaItem(item) {
+    let elemento = null;
+    try {
+      elemento = item.localizar();
+    } catch (err) {
+      console.error('[PendenciasPanel] Erro ao localizar elemento:', err);
+    }
+
+    if (!elemento) {
+      console.warn('[PendenciasPanel] Não foi possível localizar o elemento para:', item.texto);
+      return;
+    }
+
+    garantirEstiloDestaque();
+
+    elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    elemento.classList.remove(HIGHLIGHT_CLASS);
+    // força reflow para reiniciar a animação caso já esteja destacado
+    void elemento.offsetWidth;
+    elemento.classList.add(HIGHLIGHT_CLASS);
+
+    setTimeout(() => {
+      elemento.classList.remove(HIGHLIGHT_CLASS);
+    }, 2600);
+  }
+
+  // --------------------------------------------------------------------
   // 8. API pública
   // --------------------------------------------------------------------
 
@@ -524,6 +715,11 @@
       console.warn('[PendenciasPanel] setData espera um array.');
       return;
     }
+
+    // A ação pode ter mudado desde a última chamada (SPA — a URL muda sem
+    // recarregar a página), então recarregamos o conjunto de dispensados
+    // correspondente à ação atual.
+    dispensados = carregarDispensados();
 
     itens = novosItens
       .map((raw) => {
@@ -537,7 +733,8 @@
           gravidade,
           texto: raw.texto || '',
           explicacao: raw.explicacao || '',
-          funcao: typeof raw.funcao === 'function' ? raw.funcao : null
+          funcao: typeof raw.funcao === 'function' ? raw.funcao : null,
+          localizar: typeof raw.localizar === 'function' ? raw.localizar : null
         };
       })
       .filter(Boolean);
@@ -556,7 +753,8 @@
       gravidade,
       texto: raw.texto || '',
       explicacao: raw.explicacao || '',
-      funcao: typeof raw.funcao === 'function' ? raw.funcao : null
+      funcao: typeof raw.funcao === 'function' ? raw.funcao : null,
+      localizar: typeof raw.localizar === 'function' ? raw.localizar : null
     });
     render();
   }

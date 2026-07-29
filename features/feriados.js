@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SIPLUS - Pintar Feriados no Calendário
 // @namespace    http://tampermonkey.net/
-// @version      2.0.0
+// @version      2.1.0
 // @description  Pinta as células do calendário SIPLAN com base nos feriados
 // @match        http://webapps.sorocaba.sescsp.org.br/siplan/*
 // @match        https://webapps.sorocaba.sescsp.org.br/siplan/*
@@ -12,31 +12,17 @@
 
 /*
   CHANGELOG
-  - 2.0.0: BREAKING (na organização, não no comportamento visual):
-    A lista de feriados/eventos deixou de ficar hardcoded neste arquivo e
-    passou a ser carregada de data/feriados.json (fetch). Antes existiam
-    DUAS fontes de dados divergentes: um array grande aqui dentro do
-    .user.js e um feriados.json separado com apenas um subconjunto das
-    datas. Agora data/feriados.json é a fonte única (ver comentário lá).
-
-    Isso também facilita: (a) atualizar as datas sem editar/republicar o
-    userscript, (b) reaproveitar o mesmo arquivo de dados numa futura
-    extensão de navegador.
-
-    Requisito: este arquivo precisa rodar em contexto onde `fetch` consegue
-    acessar data/feriados.json (mesma origem do Tampermonkey/extensão, ou
-    via @resource no caso de Tampermonkey puro — ver nota abaixo).
-
-  NOTA sobre Tampermonkey + fetch de arquivo local:
-  Em Tampermonkey, para carregar um JSON local sem CORS, a forma recomendada
-  é declarar:
-    // @resource     feriadosData data/feriados.json
-  e ler com GM_getResourceText('feriadosData') em vez de fetch(). Deixei o
-  fetch() como implementação porque é o que funcionará diretamente quando
-  isto virar uma extensão de navegador (manifest com web_accessible_resources
-  ou apenas fetch(chrome.runtime.getURL(...))). Se for manter como
-  Tampermonkey por enquanto, troque carregarFeriados() pela versão com
-  GM_getResourceText (comentada abaixo da função).
+  - 2.1.0: Revertido o fetch() remoto de data/feriados.json introduzido na
+    2.0.0. Ele funcionava em teoria, mas causou (ou é suspeito de causar)
+    travamento de página em branco ao ser combinado com outros @require
+    remotos num ambiente de rede mais restrito. Os dados voltaram a ficar
+    embutidos no próprio arquivo (como no script .user.js original),
+    eliminando qualquer dependência de rede durante o carregamento da
+    página. Se no futuro migrar para extensão de navegador, ainda vale a
+    pena reaproveitar data/feriados.json via chrome.runtime.getURL(...),
+    que não tem esse tipo de restrição de rede.
+  - 2.0.0 (histórico): tentativa de usar data/feriados.json como fonte
+    única via fetch remoto.
 */
 
 (function () {
@@ -55,20 +41,186 @@
     }
   };
 
+  // Dados embutidos diretamente aqui (fonte original: data/feriados.json do
+  // repositório). Antes esta lista vinha de um fetch() remoto ao GitHub —
+  // trocado por dados locais para eliminar qualquer dependência de rede
+  // durante o carregamento da página do SIPLAN.
+  const FERIADOS =   [
+    {
+      "data": "2026-06-04",
+      "tipo": "aberta",
+      "descricao": "Corpus Christi"
+    },
+    {
+      "data": "2026-06-13",
+      "tipo": "aberta",
+      "descricao": "Jogo Brasil: 19h"
+    },
+    {
+      "data": "2026-06-19",
+      "tipo": "aberta",
+      "descricao": "Jogo Brasil: 21h30. Unidade Fecha 19h"
+    },
+    {
+      "data": "2026-06-24",
+      "tipo": "aberta",
+      "descricao": "Jogo Brasil: 19h"
+    },
+    {
+      "data": "2026-06-29",
+      "tipo": "fechada",
+      "descricao": "Jogo Brasil: 14h"
+    },
+    {
+      "data": "2026-07-05",
+      "tipo": "aberta",
+      "descricao": "Oitavas de Final: 17h"
+    },
+    {
+      "data": "2026-07-11",
+      "tipo": "aberta",
+      "descricao": "Quartas de Final: 18h"
+    },
+    {
+      "data": "2026-07-15",
+      "tipo": "aberta",
+      "descricao": "Semifinal: 16h"
+    },
+    {
+      "data": "2026-07-19",
+      "tipo": "aberta",
+      "descricao": "Final: 16h"
+    },
+    {
+      "data": "2026-07-09",
+      "tipo": "aberta",
+      "descricao": "Revolução Constitucionalista"
+    },
+    {
+      "data": "2026-08-15",
+      "tipo": "aberta",
+      "descricao": "Aniversário de Sorocaba"
+    },
+    {
+      "data": "2026-09-07",
+      "tipo": "aberta",
+      "descricao": "Independência do Brasil"
+    },
+    {
+      "data": "2026-09-08",
+      "tipo": "fechada",
+      "descricao": "Independência do Brasil"
+    },
+    {
+      "data": "2026-10-04",
+      "tipo": "fechada",
+      "descricao": "Primeiro Turno"
+    },
+    {
+      "data": "2026-10-25",
+      "tipo": "fechada",
+      "descricao": "Fecha se tiver segundo turno"
+    },
+    {
+      "data": "2026-10-12",
+      "tipo": "aberta",
+      "descricao": "Nossa Senhora Aparecida"
+    },
+    {
+      "data": "2026-10-13",
+      "tipo": "fechada",
+      "descricao": "Nossa Senhora Aparecida"
+    },
+    {
+      "data": "2026-11-02",
+      "tipo": "aberta",
+      "descricao": "Finados"
+    },
+    {
+      "data": "2026-11-03",
+      "tipo": "fechada",
+      "descricao": "Finados"
+    },
+    {
+      "data": "2026-11-15",
+      "tipo": "aberta",
+      "descricao": "Proclamação da República"
+    },
+    {
+      "data": "2026-11-20",
+      "tipo": "aberta",
+      "descricao": "Consciência Negra"
+    },
+    {
+      "data": "2027-02-08",
+      "tipo": "aberta",
+      "descricao": "Carnaval"
+    },
+    {
+      "data": "2027-02-09",
+      "tipo": "aberta",
+      "descricao": "Carnaval"
+    },
+    {
+      "data": "2027-02-10",
+      "tipo": "fechada",
+      "descricao": "Cinzas"
+    },
+    {
+      "data": "2027-04-21",
+      "tipo": "aberta",
+      "descricao": "Tiradentes"
+    },
+    {
+      "data": "2027-05-27",
+      "tipo": "aberta",
+      "descricao": "Corpus Christi"
+    },
+    {
+      "data": "2027-07-09",
+      "tipo": "aberta",
+      "descricao": "Revolução Constitucionalista"
+    },
+    {
+      "data": "2027-08-15",
+      "tipo": "aberta",
+      "descricao": "Aniversário de Sorocaba"
+    },
+    {
+      "data": "2027-09-07",
+      "tipo": "aberta",
+      "descricao": "Independência"
+    },
+    {
+      "data": "2027-10-12",
+      "tipo": "aberta",
+      "descricao": "Nossa Senhora"
+    },
+    {
+      "data": "2027-11-02",
+      "tipo": "aberta",
+      "descricao": "Finados"
+    },
+    {
+      "data": "2027-11-15",
+      "tipo": "aberta",
+      "descricao": "República"
+    },
+    {
+      "data": "2027-11-16",
+      "tipo": "fechada",
+      "descricao": "República"
+    }
+  ];
+
   let feriadosPorData = {}; // { 'AAAA-MM-DD': {tipo, descricao} }
 
-  async function carregarFeriados() {
-    try {
-      const resp = await fetch('https://raw.githubusercontent.com/melnic/siplus2/main/data/feriados.json');
-      const json = await resp.json();
-      feriadosPorData = {};
-      (json.datas || []).forEach((f) => {
-        feriadosPorData[f.data] = f;
-      });
-      console.log(`[SIPLUS/feriados] ${json.datas.length} feriados carregados.`);
-    } catch (err) {
-      console.error('[SIPLUS/feriados] Falha ao carregar data/feriados.json:', err);
-    }
+  function carregarFeriados() {
+    feriadosPorData = {};
+    FERIADOS.forEach((f) => {
+      feriadosPorData[f.data] = f;
+    });
+    console.log(`[SIPLUS/feriados] ${FERIADOS.length} feriados carregados (embutidos).`);
   }
 
   // --- Alternativa para Tampermonkey puro (sem servidor), caso o fetch
@@ -171,9 +323,9 @@
     return observer;
   }
 
-  async function init() {
+  function init() {
     adicionarEstilos();
-    await carregarFeriados();
+    carregarFeriados();
     processarCelulas();
     observarMudancas();
 
