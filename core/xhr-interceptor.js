@@ -54,9 +54,14 @@
   }
   window.__siplusXhrPatched = true;
 
-  const RE_ATIVIDADE = /api\/atividade\/96\d*(\?|$)/;
-  const RE_LISTA = /api\/atividade\?(start=|.*&start=)/;
-  const RE_CHECKLIST = /api\/solicitacao\/checklist\?/;
+  //Versao anterior
+  //const RE_ATIVIDADE = /api\/atividade\/96\d*(\?|$)/;
+  //const RE_LISTA = /api\/atividade\?(start=|.*&start=)/;
+  //const RE_CHECKLIST = /api\/solicitacao\/checklist\?/;
+  
+  const RE_ATIVIDADE = /\/api\/atividade\/96\d*(\?|$)/;
+  const RE_LISTA = /\/api\/atividade.*[?&]start=/;  // <- CORRIGIDO
+  const RE_CHECKLIST = /\/api\/solicitacao\/checklist\?/;
 
   const originalOpen = XMLHttpRequest.prototype.open;
 
