@@ -24,6 +24,12 @@
         Disparado para respostas de /api/atividade?start=... (lista/calendário),
         usado pelo scan de conflitos.
 
+    - "siplus:checklist-loaded" -> detail: { method, url, data }
+        Disparado para respostas de /api/solicitacao/checklist?... (telas de
+        Pré-análise/Filtro Adm). Cada item já traz qntdArquivos, custo,
+        atividadeId, técnico etc. — útil pra verificar PCAP/CP/
+        Hospedagem/Passagem sem precisar buscar cada ação individualmente.
+
     - "siplus:xhr-error" -> detail: { method, url }
         Disparado se a requisição falhar.
 
@@ -50,14 +56,16 @@
 
   const RE_ATIVIDADE = /api\/atividade\/96\d*(\?|$)/;
   const RE_LISTA = /api\/atividade\?(start=|.*&start=)/;
+  const RE_CHECKLIST = /api\/solicitacao\/checklist\?/;
 
   const originalOpen = XMLHttpRequest.prototype.open;
 
   XMLHttpRequest.prototype.open = function (method, url) {
     const isAtividade = RE_ATIVIDADE.test(url);
     const isLista = RE_LISTA.test(url);
+    const isChecklist = RE_CHECKLIST.test(url);
 
-    if (isAtividade || isLista) {
+    if (isAtividade || isLista || isChecklist) {
       this.addEventListener('load', function () {
         let data = null;
         try {
@@ -70,9 +78,10 @@
           return;
         }
 
-        const eventName = isAtividade
-          ? 'siplus:atividade-loaded'
-          : 'siplus:atividades-lista-loaded';
+        let eventName;
+        if (isAtividade) eventName = 'siplus:atividade-loaded';
+        else if (isChecklist) eventName = 'siplus:checklist-loaded';
+        else eventName = 'siplus:atividades-lista-loaded';
 
         document.dispatchEvent(
           new CustomEvent(eventName, { detail: { method, url, data } })
