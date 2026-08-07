@@ -30,6 +30,11 @@
         atividadeId, técnico etc. — útil pra verificar PCAP/CP/
         Hospedagem/Passagem sem precisar buscar cada ação individualmente.
 
+    - "siplus:tecnicos-loaded" -> detail: { method, url, data }
+        Disparado para respostas de /api/usuario/tecnico?... — catálogo de
+        técnicos (id/nome), usado como fallback quando o campo "tecnico"
+        de outras respostas vem nulo.
+
     - "siplus:xhr-error" -> detail: { method, url }
         Disparado se a requisição falhar.
 
@@ -57,6 +62,7 @@
   const RE_ATIVIDADE = /api\/atividade\/96\d*(\?|$)/;
   const RE_LISTA = /api\/atividade\?(start=|.*&start=)/;
   const RE_CHECKLIST = /api\/solicitacao\/checklist\?/;
+  const RE_TECNICOS = /api\/usuario\/tecnico\?/;
 
   const originalOpen = XMLHttpRequest.prototype.open;
 
@@ -64,8 +70,9 @@
     const isAtividade = RE_ATIVIDADE.test(url);
     const isLista = RE_LISTA.test(url);
     const isChecklist = RE_CHECKLIST.test(url);
+    const isTecnicos = RE_TECNICOS.test(url);
 
-    if (isAtividade || isLista || isChecklist) {
+    if (isAtividade || isLista || isChecklist || isTecnicos) {
       this.addEventListener('load', function () {
         let data = null;
         try {
@@ -81,6 +88,7 @@
         let eventName;
         if (isAtividade) eventName = 'siplus:atividade-loaded';
         else if (isChecklist) eventName = 'siplus:checklist-loaded';
+        else if (isTecnicos) eventName = 'siplus:tecnicos-loaded';
         else eventName = 'siplus:atividades-lista-loaded';
 
         document.dispatchEvent(
